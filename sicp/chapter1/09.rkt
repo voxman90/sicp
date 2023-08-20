@@ -16,13 +16,22 @@
   Первая процедура определяет рекурсивный процесс, а вторая
   итеративный.
 
-  (+rec 2 1) =>
-  (inc (+rec (dec 2) 1)) => (inc (+rec 1 1)) =>
-  (inc (inc (+rec (dec 1) 1)) => (inc (inc (+rec 0 1))) =>
-  (inc (inc 1)) => (inc 2) => 3
+  (+rec 4 5) =>
+  (inc (+rec (dec 4) 5)) => (inc (+rec 3 5)) =>
+  (inc (inc (+rec (dec 3) 5))) => ... =>
+  (inc (inc (inc (+rec (dec 2) 5)))) => ... =>
+  (inc (inc (inc (inc (+rec (dec 1) 5))))) =>
+  (inc (inc (inc (inc (+rec 0 5))))) =>
+  (inc (inc (inc (inc 5)))) =>
+  (inc (inc (inc 6))) =>
+  (inc (inc 7)) =>
+  (inc 8) =>
+  9
 
-  (+iter 2 1) =>
-  (+iter (dec 2) (inc 1)) => (+iter 1 2) =>
-  (+iter (dec 1) (inc 2)) => (+iter 0 3) =>
-  3
+  (+iter 4 5) => (+iter (dec 4) (inc 5)) =>
+  (+iter 3 6) => ... =>
+  (+iter 2 7) => ... =>
+  (+iter 1 8) => ... =>
+  (+iter 0 9) =>
+  9
 |#
