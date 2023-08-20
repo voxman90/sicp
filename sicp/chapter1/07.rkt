@@ -22,7 +22,6 @@
   (< (abs (- improved-guess guess))
      (get-part guess 0.01)))
 
-
 (define (sqrt-iter guess improved-guess x)
   (if (good-enough? guess improved-guess)
       improved-guess

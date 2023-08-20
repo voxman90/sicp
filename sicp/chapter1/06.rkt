@@ -10,6 +10,7 @@
 либо одна, либо другая ветка.
 |#
 
+
 (define (never x)
   (if #t
       x
@@ -17,15 +18,17 @@
 
 (never 1)
 
+
 #|
   Это не выдаст ошибку 'division by zero'.
 |#
 
+#|
 (define (custom-if predicate then-clause else-clause)
   (cond (predicate then-clause)
         (else else-clause)))
 
-#|
+
 (define (ever x)
   (custom-if #t
              x

@@ -15,7 +15,6 @@
         (* 2 guess))
      3))
 
-
 (define (get-part x percent)
   (* (/ x 100)
      percent))
