@@ -21,21 +21,21 @@
 (define (dec n)
   (- n 1))
 
-(define (^ base degree acc)
+(define (fast-expt base degree acc)
   (cond ((= degree 0) acc)
-        ((= degree 1) (^ base
-                         (dec degree)
-                         (* acc base)))
+        ((= degree 1) (fast-expt base
+                                 (dec degree)
+                                 (* acc base)))
         (else (if (even? degree)
-                  (^ (* base base)
-                     (/ degree 2)
-                     acc)
-                  (^ base
-                     (dec degree)
-                     (* acc base))))))
+                  (fast-expt (* base base)
+                             (/ degree 2)
+                             acc)
+                  (fast-expt base
+                             (dec degree)
+                             (* acc base))))))
 
 (define (solution base degree)
-  (^ base degree 1))
+  (fast-expt base degree 1))
 
 (check-equal? (solution 10 0) 1)
 (check-equal? (solution 3 20) (expt 3 20))
