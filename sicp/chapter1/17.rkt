@@ -24,16 +24,6 @@
 (define (double a)
   (+ a a))
 
-(define (max a b)
-  (if (< a b)
-      b
-      a))
-
-(define (min a b)
-  (if (> a b)
-      b
-      a))
-
 (define (dec a)
   (- a 1))
 
@@ -42,19 +32,13 @@
       (/ a 2)
       a))
 
-(define (fast-mul-iter a b acc)
-  (cond ((= b 0) acc)
-        ((= b 1) (fast-mul-iter a (dec b) (+ acc a)))
-        (else (if (not (= (halve b) b))
-                  (fast-mul-iter (double a)
-                                 (halve b)
-                                 acc)
-                  (fast-mul-iter a
-                                 (dec b)
-                                 (+ acc a))))))
+(define (even? a)
+  (not (= (halve a) a)))
 
 (define (fast-mul a b)
-  (fast-mul-iter (max a b) (min a b) 0))
+  (cond ((= b 0) b)
+        ((even? b) (double (fast-mul a (halve b))))
+        (else (+ a (fast-mul a (dec b))))))
 
 (check-equal? (fast-mul 1 1) 1)
 (check-equal? (fast-mul 40 30) (* 40 30))
