@@ -59,33 +59,33 @@
 
 (#%require rackunit)
 
-  (define (square a)
-    (* a a))
+(define (square a)
+  (* a a))
 
-  (define (T2p p q)
-    (+ (square p)
-       (square q)))
+(define (T2p p q)
+  (+ (square p)
+      (square q)))
 
-  (define (T2q p q)
-    (+ (* 2 p q)
-       (square q)))
+(define (T2q p q)
+  (+ (* 2 p q)
+      (square q)))
 
-  (define (fib-iter a b p q count)
-    (cond ((= count 0) b)
-          ((even? count)
-           (fib-iter a
-                     b
-                     (T2p p q)
-                     (T2q p q)
-                     (/ count 2)))
-          (else (fib-iter (+ (* b q) (* a q) (* a p))
-                          (+ (* b p) (* a q))
-                          p
-                          q
-                          (- count 1)))))
+(define (fib-iter a b p q count)
+  (cond ((= count 0) b)
+        ((even? count)
+          (fib-iter a
+                    b
+                    (T2p p q)
+                    (T2q p q)
+                    (/ count 2)))
+        (else (fib-iter (+ (* b q) (* a q) (* a p))
+                        (+ (* b p) (* a q))
+                        p
+                        q
+                        (- count 1)))))
 
-  (define (fib n)
-    (fib-iter 1 0 0 1 n))
+(define (fib n)
+  (fib-iter 1 0 0 1 n))
 
 (check-equal? (fib 0) 0)
 (check-equal? (fib 1) 1)
