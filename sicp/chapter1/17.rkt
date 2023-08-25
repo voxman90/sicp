@@ -37,8 +37,10 @@
 
 (define (fast-mul a b)
   (cond ((= b 0) b)
-        ((even? b) (double (fast-mul a (halve b))))
-        (else (+ a (fast-mul a (dec b))))))
+        ((even? b)
+         (double (fast-mul a (halve b))))
+        (else
+         (+ a (fast-mul a (dec b))))))
 
 (check-equal? (fast-mul 1 1) 1)
 (check-equal? (fast-mul 40 30) (* 40 30))

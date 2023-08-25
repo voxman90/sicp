@@ -23,16 +23,14 @@
 
 (define (fast-expt base degree acc)
   (cond ((= degree 0) acc)
-        ((= degree 1) (fast-expt base
-                                 (dec degree)
-                                 (* acc base)))
-        (else (if (even? degree)
-                  (fast-expt (* base base)
-                             (/ degree 2)
-                             acc)
-                  (fast-expt base
-                             (dec degree)
-                             (* acc base))))))
+        ((even? degree)
+         (fast-expt (* base base)
+                    (/ degree 2)
+                    acc))
+        (else
+         (fast-expt base
+                    (dec degree)
+                    (* acc base)))))
 
 (define (solution base degree)
   (fast-expt base degree 1))

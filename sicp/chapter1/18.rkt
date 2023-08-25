@@ -36,16 +36,14 @@
 
 (define (mul a b acc)
   (cond ((= b 0) acc)
-        ((= b 1) (mul a
-                      (dec b)
-                      (+ acc a)))
-        (else (if (even? b)
-                  (mul (double a)
-                       (halve b)
-                       acc)
-                  (mul a
-                       (dec b)
-                       (+ acc a))))))
+        ((even? b)
+         (mul (double a)
+              (halve b)
+              acc))
+        (else
+         (mul a
+              (dec b)
+              (+ acc a)))))
 
 (define (mul-iter a b)
   (mul (max a b) (min a b) 0))
