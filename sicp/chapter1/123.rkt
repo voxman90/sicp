@@ -22,11 +22,6 @@
         (body i)
         (for (inc i) pred? inc body))))
 
-(define (? pred? then-cond else-cond)
-  (if pred?
-      then-cond
-      else-cond))
-
 (define (nearest-odd n)
   (if (= (remainder n 2) 0)
       (+ n 1)
@@ -54,51 +49,59 @@
 (define (prime? n)
   (= (smallest-divisor n) n))
 
-(define (get-prime-test-time n start-time prime?)
+(define (get-number-test-time n start-time prime?)
   (if (prime? n)
       (- (runtime) start-time)
       0))
 
-(define (get-first-primes-test-time range-start range-end count prime?)
-  (if (not (or (> range-start range-end)
-               (= count 0)))
-      (+ (get-prime-test-time range-start (runtime) prime?)
-         (get-first-primes-test-time (+ range-start 2)
-                                     range-end
-                                     (? (= (get-prime-test-time range-start (runtime) prime?) 0)
-                                        count
-                                        (- count 1))
-                                     prime?))
-      0))
+(define (get-primes-test-time start prime?)
+  (define acc 0)
+  (define count 0)
+
+  (for 0
+       (lambda (_) (< count PRIME_COUNT))
+       (lambda (i) (+ i 1))
+       (lambda (i)
+               ((lambda (test-time)
+                  (if (not (= 0 test-time))
+                      (begin
+                        (set! count (+ count 1))
+                        (set! acc (+ acc test-time)))))
+                (get-number-test-time (+ start (* 2 i))
+                                      (runtime)
+                                      prime?))))
+  acc)
 
 (define PRIME_COUNT 5.0)
 (define RUN_COUNT 1000)
 
-(define (get-test-time-median range-start range-end prime?)
+(define (get-test-time-median start prime?)
   (define acc 0)
-  (define range-start-odd (nearest-odd range-start))
+
   (for 0
        (lambda (i) (< i RUN_COUNT))
        (lambda (i) (+ i 1))
        (lambda (_)
                (set! acc (+ acc
-                         (/ (get-first-primes-test-time range-start-odd range-end PRIME_COUNT prime?)
-                         PRIME_COUNT)))))
+                            (/ (get-primes-test-time start prime?)
+                               PRIME_COUNT)))))
   (/ acc RUN_COUNT))
 
-(define (get-test-time-median-next range-start range-end)
-  (get-test-time-median range-start range-end prime?))
+(define (get-test-time-median-next start)
+  (define start-odd (nearest-odd start))
+  (get-test-time-median start-odd prime?))
 
-(get-test-time-median-next 1000 10000)
-(get-test-time-median-next 10000 100000)
-(get-test-time-median-next 100000 1000000)
-(get-test-time-median-next 1000000 10000000)
-(get-test-time-median-next 10000000 100000000)
-(get-test-time-median-next 100000000 1000000000)
-(get-test-time-median-next 1000000000 10000000000)
+(get-test-time-median-next 1000)
+(get-test-time-median-next 10000)
+(get-test-time-median-next 100000)
+(get-test-time-median-next 1000000)
+(get-test-time-median-next 10000000)
+(get-test-time-median-next 100000000)
+(get-test-time-median-next 1000000000)
+(newline)
 
 #|
-  Среднее время на проверку на простоту первых пяти простых чисел (за 1000 повторений):
+  Среднее время затрачиваемое проверку на простоту первых пяти простых чисел (за 1000 повторений):
 
     +-------------+--------------------+-------+---------------------------+-------------+-------+
     | Интервал    | Среднее время (мс) | Рост  | Среднее время с next (мс) | Рост (next) |       |
@@ -112,12 +115,12 @@
     | (10⁹, 10¹⁰) | 580.672            | 3.18  | 305.69                    | 3.153       | 0.526 |
     +-------------+--------------------+-------+---------------------------+-------------+-------+
 
-  Получаемое ускорение весьма ощутимо, но по подсчётам приближается к 1.9, а не к 2. Одна из
-  возможных причин - это то, что количество операций уменьшается не точно вдвое. Ведь мы теперь
-  не просто прибавляем к n единицу, но и проверяем, равно ли n двум.
+  Ускорение процесса проверки по подсчётам приближается к 1.9, а не к 2. Одна из возможных причин -
+  это затраты времени на сравнение потенциального делителя с двойкой. Это сравнение осуществляется
+  каждый раз, когда процедура переходит к проверке следующего потенциального делителя.
 
-  Уменьшилось бы среднее время проверки на простоту вдвое, если бы нам не пришлось сравнивать
-  потенциальный делитель с 2 на каждом шаге?
+  Уменьшилось ли бы среднее время проверки двое, если бы нам не пришлось сравнивать потенциальный
+  делитель с 2 на каждом шаге?
 
   Проверим это:
 |#
@@ -129,20 +132,20 @@
 
 (define (prime-alt? n)
   (if (divides? 2 n)
-    (if (= 2 n) #t #f)
+    (= 2 n)
     (= n (find-divisor-alt n 3))))
 
-(define (get-test-time-median-alt range-start range-end)
-  (get-test-time-median range-start range-end prime-alt?))
+(define (get-test-time-median-alt start)
+  (define start-odd (nearest-odd start))
+  (get-test-time-median start-odd prime-alt?))
 
-(newline)
-(get-test-time-median-alt 1000 10000)
-(get-test-time-median-alt 10000 100000)
-(get-test-time-median-alt 100000 1000000)
-(get-test-time-median-alt 1000000 10000000)
-(get-test-time-median-alt 10000000 100000000)
-(get-test-time-median-alt 100000000 1000000000)
-(get-test-time-median-alt 1000000000 10000000000)
+(get-test-time-median-alt 1000)
+(get-test-time-median-alt 10000)
+(get-test-time-median-alt 100000)
+(get-test-time-median-alt 1000000)
+(get-test-time-median-alt 10000000)
+(get-test-time-median-alt 100000000)
+(get-test-time-median-alt 1000000000)
 
 #|
     +-------------+--------------------+------------------------+---------+
@@ -157,8 +160,5 @@
     | (10⁹, 10¹⁰) | 580.672            | 287.41                 | 0.495   |
     +-------------+--------------------+------------------------+---------+
 
-  Результат существенно ближе к двухкратному уменьшению затрачиваемого времени, но, всё же,
-  ускоряется даже несколько быстрее. В альтернативной версии не только убрано сравнение с
-  двойкой на каждом шаге, но и меньшее количество вызовов процедур (т.к., как минимум одна
-  промежуточная стадия вычислений убрана).
+  Результат очень близок к двухкратному уменьшению затрачиваемого времени.
 |#

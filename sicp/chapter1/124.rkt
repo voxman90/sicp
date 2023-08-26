@@ -103,7 +103,6 @@
                 (get-number-test-time (+ start (* 2 i))
                                       (runtime)
                                       prime?))))
-
   acc)
 
 (define PRIME_COUNT 100.0)

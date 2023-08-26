@@ -73,14 +73,17 @@
   (display n)
   (start-prime-test n (runtime)))
 
-(define (search-first-n-primes range-start range-end count)
-  (if (not (or (> range-start range-end) (= count 0)))
-      (search-first-n-primes (+ range-start 2)
-                             range-end
-                             (? (timed-prime-test range-start) (- count 1) count))))
+(define (search-primes range-start range-end count)
+  (if (not (or (> range-start range-end)
+               (= count 0)))
+      (search-primes (+ range-start 2)
+                     range-end
+                     (? (timed-prime-test range-start) (- count 1) count))))
+
+(define PRIME_COUNT 5.0)
 
 (define (search-for-primes range-start range-end)
-  (search-first-n-primes (nearest-odd range-start) range-end 3))
+  (search-primes (nearest-odd range-start) range-end PRIME_COUNT))
 
 (search-for-primes 1000 10000)
 (search-for-primes 10000 100000)
@@ -90,15 +93,12 @@
 (newline)
 
 #|
-  Для чисел близких к 1000, 10000 и 100000 затрачиваемое время растёт медленнее √10.
-  Разница между временем потраченным на проверку чисел близких к 100000 и 1000000 лучше
-  подпадает под оценку θ(√n).
+  Для небольших чисел (близких к 1000 или 10000) затрачиваемое время растёт медленнее √10.
+  С ростом чисел оценка затрат времени Θ(√n) хорошо описывает процесс и согласуется с
+  замерами.
 
-  Либо эти отклонения случайны, либо что-то вмешивается в процесс подсчёта (и влияние этого процесса
-  намного заметнее при проверке небольших чисел на простоту).
-
-  Проведём серию тестов и посмотрим на среднее значение (заодно исключим взаимодействие с консолью
-  в ходе теста):
+  Проведём серию тестов и получим среднее значение большего количества замеров (так же
+  исключим взаимодействие с консолью в ходе проверок):
 |#
 
 (define (for i pred? inc body)
@@ -107,60 +107,62 @@
         (body i)
         (for (inc i) pred? inc body))))
 
-(define (get-prime-test-time n start-time)
+(define (get-number-test-time n start-time)
   (if (prime? n)
       (- (runtime) start-time)
       0))
 
-(define (get-first-n-primes-test-time range-start range-end count)
-  (if (not (or (> range-start range-end) (= count 0)))
-      (+ (get-prime-test-time range-start (runtime))
-         (get-first-n-primes-test-time (+ range-start 2)
-                                       range-end
-                                       (? (= (get-prime-test-time range-start (runtime)) 0)
-                                          count
-                                          (- count 1))))
-      0))
+(define (get-primes-test-time start)
+  (define acc 0)
+  (define count 0)
 
-(define PRIME_COUNT 5.0)
+  (for 0
+       (lambda (_) (< count PRIME_COUNT))
+       (lambda (i) (+ i 1))
+       (lambda (i)
+               ((lambda (test-time)
+                  (if (not (= 0 test-time))
+                        (begin
+                          (set! count (+ count 1))
+                          (set! acc (+ acc test-time)))))
+                (get-number-test-time (+ start (* 2 i))
+                                      (runtime)))))
+  acc)
+
 (define RUN_COUNT 1000)
 
-(define (get-test-time-median range-start range-end)
+(define (get-test-time-median start)
   (define acc 0)
+
   (for 0
        (lambda (i) (< i RUN_COUNT))
        (lambda (i) (+ i 1))
        (lambda (_)
                (set! acc (+ acc
-                     (/ (get-first-n-primes-test-time (nearest-odd range-start) range-end PRIME_COUNT)
-                        PRIME_COUNT)))))
+                            (/ (get-primes-test-time (nearest-odd start))
+                               PRIME_COUNT)))))
   (/ acc RUN_COUNT))
 
-(get-test-time-median 1000 10000)
-(get-test-time-median 10000 100000)
-(get-test-time-median 100000 1000000)
-(get-test-time-median 1000000 10000000)
-(get-test-time-median 10000000 100000000)
-(get-test-time-median 100000000 1000000000)
-(get-test-time-median 1000000000 10000000000)
+(get-test-time-median 1000)
+(get-test-time-median 10000)
+(get-test-time-median 100000)
+(get-test-time-median 1000000)
+(get-test-time-median 10000000)
+(get-test-time-median 100000000)
+(get-test-time-median 1000000000)
 
 #|
-  Есть некоторое постоянное вмешательство в ход вычислений, которое, судя по всему, имеет близкую
-  к постоянной величину.
   Среднее время на проверку на простоту первых пяти простых чисел (за 1000 повторений):
 
-    +----------------+----------------------------------+-------+
-    | Интервал       | Среднее затрачиваемое время (мс) | Рост  |
-    +----------------+----------------------------------+-------+
-    | 10³ < p < 10⁴  | 1.0084                           |       |
-    | 10⁴ < p < 10⁵  | 2.0048                           | 1.988 |
-    | 10⁵ < p < 10⁶  | 5.9526                           | 2.97  |
-    | 10⁶ < p < 10⁷  | 18.366                           | 3.08  |
-    | 10⁷ < p < 10⁸  | 58.23                            | 3.17  |
-    | 10⁸ < p < 10⁹  | 182.54                           | 3.134 |
-    | 10⁹ < p < 10¹⁰ | 580.672                          | 3.18  |
-    +----------------+----------------------------------+-------+
-
-  Учитывая, что √10 ≈ 3.1622, можно сказать, что этот результат совместим с предположением, что
-  программы на Вашей машине затрачивают на выполнение задач время, пропорциональное числу шагов.
+    +--------------+--------------------+------+
+    |   Интервал   | Среднее время (мс) | Рост |
+    +--------------+--------------------+------+
+    |  (10³, 10⁴)  |            1.0084  |      |
+    |  (10⁴, 10⁵)  |            2.0048  | 1.99 |
+    |  (10⁵, 10⁶)  |            5.9526  | 2.97 |
+    |  (10⁶, 10⁷)  |            18.366  | 3.08 |
+    |  (10⁷, 10⁸)  |            58.230  | 3.17 |
+    |  (10⁸, 10⁹)  |            182.54  | 3.13 |
+    | (10⁹, 10¹⁰)  |           580.672  | 3.18 |
+    +--------------+--------------------+------+
 |#
