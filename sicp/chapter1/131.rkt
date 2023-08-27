@@ -20,6 +20,12 @@
 
 (#%require rackunit)
 
+(define (inc n) (+ n 1))
+
+(define (square x) (* x x))
+
+(define (identity x) x)
+
 (define (product-rec func x next end)
   (if (> x end)
       1
@@ -35,12 +41,15 @@
 (define (factorial n)
   (product identity 1 inc n))
 
-(define (inc n) (+ n 1))
+(define (pi n)
+  (define (term n)
+    (define 2n (* 2 n))
+    (/ (square 2n)
+       (* (- 2n 1) (+ 2n 1))))
+  (* 2 (product term 1 inc n)))
 
-(define (square x) (* x x))
-
-(define (identity x) x)
-
+(check-equal? (pi 2) 128/45)
+(check-equal? (pi 5) 29491200/9823275)
 (check-equal? (product square 1 inc 3) 36)
 (check-equal? (product identity 3 inc 5) 60)
 (check-equal? (factorial 5) 120)
