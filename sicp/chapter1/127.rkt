@@ -40,7 +40,7 @@
 
 (define (print-carmichael-test-result n)
   (map display
-    (list  "(carmichael-test " n ") => " (carmichael-test n)))
+    (list "(carmichael-test " n ") => " (carmichael-test n)))
   (display "\n"))
 
 (define CARMICHAEL_NUMBERS '(561 1105 1729 2465 2821 6601))
