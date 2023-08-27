@@ -47,7 +47,7 @@
            (remainder (* base (expmod-rec (- exp 1))) m))))
   (expmod-rec exp))
 
-(define PRIME_TEST_TIMES 10.0)
+(define PRIME_TEST_TIMES 25.0)
 
 (define (prime? n)
   (define (miller-rabin-test n)
