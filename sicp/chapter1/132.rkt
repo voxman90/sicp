@@ -27,14 +27,22 @@
     (if (> a b)
         null-value
         (combiner (term a) (accumulate (next a)))))
+
   (accumulate a))
 
-(define (accumulate combiner null-value term a next b)
-  (define (accumulate-iter acc a)
+(define (accumulate-iter combiner null-value term a next b)
+  (define (accumulate acc a)
     (if (> a b)
         acc
-        (accumulate-iter (combiner acc (term a)) (next a))))
-  (accumulate-iter null-value a))
+        (accumulate (combiner acc (term a)) (next a))))
+
+  (accumulate null-value a))
+
+(define (sum term a next b)
+  (accumulate-iter + 0 term a next b))
+
+(define (product term a next b)
+  (accumulate-iter * 1 term a next b))
 
 (define (inc n) (+ n 1))
 
@@ -42,12 +50,15 @@
 
 (define (identity x) x)
 
-(check-equal? (accumulate * 1 square 3 inc 1) 1)
-(check-equal? (accumulate * 1 square 1 inc 3) 36)
-(check-equal? (accumulate * 1 identity 3 inc 5) 60)
-(check-equal? (accumulate + 0 identity 1 inc 10) 55)
+(check-equal? (accumulate-iter * 1 square 3 inc 1) 1)
+(check-equal? (accumulate-iter * 1 square 1 inc 3) 36)
+(check-equal? (accumulate-iter * 1 identity 3 inc 5) 60)
+(check-equal? (accumulate-iter + 0 identity 1 inc 10) 55)
 
 (check-equal? (accumulate-rec * 1 square 3 inc 1) 1)
 (check-equal? (accumulate-rec * 1 square 1 inc 3) 36)
 (check-equal? (accumulate-rec * 1 identity 3 inc 5) 60)
 (check-equal? (accumulate-rec + 0 identity 1 inc 10) 55)
+
+(check-equal? (sum square 1 inc 5) 55)
+(check-equal? (product identity 1 inc 5) 120)

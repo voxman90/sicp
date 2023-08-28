@@ -21,10 +21,10 @@
 
 (define (expmod base exp m)
   (define (remainder-of-square expmod-res)
-    (define remainder-res (remainder (square expmod-res) m))
-    (if (= remainder-res 1)
-        0
-        remainder-res))
+    (let ((remainder-res (remainder (square expmod-res) m)))
+      (if (= remainder-res 1)
+          0
+          remainder-res)))
 
   (define (expmod-rec exp)
     (cond ((= exp 0) 1)
@@ -41,6 +41,7 @@
   (define (miller-rabin-test n)
     (define (try-it a)
       (expmod a n n))
+
     (try-it (+ 2 (random (- n 2)))))
 
   (define (prime-rec? n times)
@@ -64,23 +65,22 @@
   (filtered-accumulate-iter null-value a))
 
 (define (prime-sum a b)
-  (filtered-accumulate +
-                       (if (= a 2) 2 0)
-                       identity
-                       (if (even? a) (+ a 1) a)
-                       double-inc
-                       b
-                       prime?))
+  (let ((acc (if (= a 2) 2 0))
+        (start-with (if (even? a) (+ a 1) a)))
+    (filtered-accumulate + acc identity start-with double-inc b prime?)))
+
+(define (filtered-product term a next b pred?)
+  (filtered-accumulate * 1 term a next b pred?))
 
 (define (reciprocral-prime-prod n)
   (define (reciprocral-prime? a)
     (= (gcd a n) 1))
 
   (if (prime? n)
-      (filtered-accumulate * 1 identity 2 inc (- n 1) ->true)
-      (if (even? n) 
-        (filtered-accumulate * 1 identity 3 double-inc (- n 1) reciprocral-prime?)
-        (filtered-accumulate * 1 identity 2 inc (- n 1) reciprocral-prime?))))
+      (filtered-product identity 2 inc (- n 1) ->true)
+      (if (even? n)
+        (filtered-product identity 3 double-inc (- n 1) reciprocral-prime?)
+        (filtered-product identity 2 inc (- n 1) reciprocral-prime?))))
 
 (define (->true _) #t)
 

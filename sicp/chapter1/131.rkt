@@ -38,7 +38,10 @@
         (product-iter (next x) (* result (func x)))))
   (product-iter x 1))
 
-(define (factorial n)
+(define (factorial-rec n)
+  (product-rec identity 1 inc n))
+
+(define (factorial-iter n)
   (product identity 1 inc n))
 
 (define (pi n)
@@ -48,8 +51,12 @@
        (* (- 2n 1) (+ 2n 1))))
   (* 2 (product term 1 inc n)))
 
-(check-equal? (pi 2) 128/45)
-(check-equal? (pi 5) 29491200/9823275)
+(check-equal? (product-rec square 1 inc 3) 36)
+(check-equal? (product-rec identity 3 inc 5) 60)
 (check-equal? (product square 1 inc 3) 36)
 (check-equal? (product identity 3 inc 5) 60)
-(check-equal? (factorial 5) 120)
+
+(check-equal? (pi 2) 128/45)
+(check-equal? (pi 5) 29491200/9823275)
+(check-equal? (factorial-rec 5) 120)
+(check-equal? (factorial-iter 5) 120)
