@@ -14,24 +14,26 @@
 
 (define (dec n) (- n 1))
 
-(define (cont-frac n d k)
-  (define (cont-frac-iter acc i)
+(define (cont-frac-iter term-n term-d k)
+  (define (cont-frac acc i)
     (if (< i 1)
         acc
-        (cont-frac-iter (/ (n i) (+ (d i) acc)) (dec i))))
+        (cont-frac (/ (term-n i)
+                      (+ (term-d i) acc))
+                   (dec i))))
 
-  (cont-frac-iter 0 k))
+  (cont-frac 0 k))
 
 (define (e k)
-  (define (D i)
+  (define (term-d i)
     (let ((j (/ (+ i 1) 3)))
       (if (integer? j)
           (* 2 j)
           1)))
 
-  (+ 2.0 (cont-frac (lambda (_) 1)
-                    D
-                    k)))
+  (+ 2.0 (cont-frac-iter (lambda (_) 1)
+                         term-d
+                         k)))
 
-(check-equal? (round (* 1000000000000 (e 100))) 2718281828459.0) 
+(check-equal? (round (* 1000000000000 (e 100))) 2718281828459.0)
 (check-equal? (round (* 100000 (e 10)))  271828.0)

@@ -50,26 +50,29 @@
 
 (define (dec n) (- n 1))
 
-(define (cont-frac n d k)
-  (define (cont-frac-rec i)
+(define (cont-frac-rec term-n term-d k)
+  (define (cont-frac i)
     (if (> i k)
         0
-        (/ (n i) (+ (d i) (cont-frac-rec (inc i))))))
+        (/ (term-n i)
+           (+ (term-d i) (cont-frac (inc i))))))
 
-  (cont-frac-rec 1))
+  (cont-frac 1))
 
-(define (cont-frac-iter n d k)
+(define (cont-frac-iter term-n term-d k)
   (define (cont-frac acc i)
     (if (< i 1)
         acc
-        (cont-frac (/ (n i) (+ (d i) acc)) (dec i))))
+        (cont-frac (/ (term-n i)
+                      (+ (term-d i) acc))
+                   (dec i))))
 
   (cont-frac 0 k))
 
 (define (test k)
-  (cont-frac (lambda (_) 1.0)
-             (lambda (_) 1.0)
-             k))
+  (cont-frac-rec (lambda (_) 1.0)
+                 (lambda (_) 1.0)
+                 k))
 
 (define (golden-ratio k)
   (+ 1 (cont-frac-iter (lambda (_) 1.0)

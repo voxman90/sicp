@@ -26,21 +26,23 @@
 
 (define (dec n) (- n 1))
 
-(define (cont-frac n d k)
-  (define (cont-frac-iter acc i)
+(define (cont-frac-iter term-n term-d k)
+  (define (cont-frac acc i)
     (if (< i 1)
         acc
-        (cont-frac-iter (/ (n i) (+ (d i) acc)) (dec i))))
+        (cont-frac (/ (term-n i)
+                      (+ (term-d i) acc))
+                   (dec i))))
 
-  (cont-frac-iter 0 k))
+  (cont-frac 0 k))
 
 (define (tan-cf angle term-amount)
   (let ((-x^2 (- (* angle angle))))
     (/ angle
        (+ 1
-          (cont-frac (lambda (_) -x^2)
-                     (lambda (i) (+ (* 2 i) 1))
-                     (dec term-amount))))))
+          (cont-frac-iter (lambda (_) -x^2)
+                          (lambda (i) (+ (* 2 i) 1))
+                          (dec term-amount))))))
 
 (check-equal? (tan-cf (/ pi 4) 100) 1.0)
 (check-equal? (tan-cf 0 10) 0)
