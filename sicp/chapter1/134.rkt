@@ -33,7 +33,7 @@
 
 (#%require rackunit)
 
-(define (->true x) #t)
+(define (->true _) #t)
 
 (define (f g)
   (g ->true))

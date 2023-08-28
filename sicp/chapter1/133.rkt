@@ -82,9 +82,9 @@
         (filtered-accumulate * 1 identity 3 double-inc (- n 1) reciprocral-prime?)
         (filtered-accumulate * 1 identity 2 inc (- n 1) reciprocral-prime?))))
 
-(define (->true n) #t)
+(define (->true _) #t)
 
-(define (double-inc x) (+ x 2))
+(define (double-inc n) (+ n 2))
 
 (define (inc n) (+ n 1))
 
