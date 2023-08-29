@@ -23,7 +23,7 @@
     (if (= n 1)
         f
         (compose f (repeated-rec (- n 1)))))
-  
+
   (repeated-rec n))
 
 (define dx 0.00001)
