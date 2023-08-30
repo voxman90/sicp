@@ -18,16 +18,14 @@
 (define (upper-bound interval)
   (cdr interval))
 
-(define (sub-interval interval-1 interval-2)
-  (make-interval (- (lower-bound interval-1) (upper-bound interval-2))
-                 (- (upper-bound interval-1) (lower-bound interval-2))))
+(define (sub-interval a b)
+  (make-interval (- (lower-bound a) (upper-bound b))
+                 (- (upper-bound a) (lower-bound b))))
 
 (define lower1 5)
-
-(define lower2 15)
-
 (define upper1 10)
 
+(define lower2 15)
 (define upper2 25)
 
 (define interval1 (make-interval lower1 upper1))
