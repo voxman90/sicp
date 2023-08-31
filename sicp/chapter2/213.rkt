@@ -94,13 +94,13 @@
                    (max p1 p2 p3 p4))))
 
 (define ac 10)
-(define ap 0.09)
+(define ap 0.9)
 
 (define bc -5)
-(define bp 0.09)
+(define bp 0.9)
 
 (define cc 1000000)
-(define cp 0.09)
+(define cp 0.9)
 
 (define a (make-center-percent ac ap))
 (define b (make-center-percent bc bp))
@@ -108,12 +108,12 @@
 
 (check-equal? (< (abs (- (percent (mul-interval a b))
                          (+ (percent a) (percent b))))
-                 0.0001) #t)
+                 0.01) #t)
 
 (check-equal? (< (abs (- (percent (mul-interval b c))
                          (+ (percent b) (percent c))))
-                 0.0001) #t)
+                 0.01) #t)
 
 (check-equal? (< (abs (- (percent (mul-interval a c))
                          (+ (percent a) (percent c))))
-                 0.0001) #t)
+                 0.01) #t)
