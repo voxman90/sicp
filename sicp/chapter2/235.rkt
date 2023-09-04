@@ -21,9 +21,9 @@
   (accumulate + 0 (map (lambda (x)
                          (cond ((pair? x) (count-leaves x))
                                ((null? x) 0)
-                               (else x)))
+                               (else 1)))
                        tree)))
 
 (check-equal? (count-leaves '()) 0)
-(check-equal? (count-leaves '(1 2 3 4 5)) 15)
-(check-equal? (count-leaves '(1 (2 (3) 4) () (1 (2 (() ()) (3 4) 5) 6))) 31)
+(check-equal? (count-leaves '(1 2 3 4 5)) 5)
+(check-equal? (count-leaves '(1 (2 (3) 4) () (1 (2 (() ()) (3 4) 5) 6))) 10)
