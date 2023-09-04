@@ -27,16 +27,15 @@
   (iter initial sequence))
 
 (define (fold-right op initial sequence)
-  (define (iter result rest)
+  (define (rec rest)
     (if (null? rest)
-        result
-        (iter (op (car rest) result)
-              (cdr rest))))
+        initial
+        (op (car rest) (rec (cdr rest)))))
 
-  (iter initial sequence))
+  (rec sequence))
 
 (define (reverse-right sequence)
-  (fold-right (lambda (x y) (cons x y)) nil sequence))
+  (fold-right (lambda (x y) (append y (cons x nil))) nil sequence))
 
 (define (reverse-left sequence)
   (fold-left (lambda (x y) (cons y x)) nil sequence))
