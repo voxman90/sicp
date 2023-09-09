@@ -32,7 +32,6 @@
                   ((< x2 x1)
                   (cons x2 (union-set set1 (cdr set2)))))))))
 
-
 (define x '(1 3 5 8))
 (define y '(0 1 2 4 9))
 (define z '(0 1 2 3 4 5 8 9))
