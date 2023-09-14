@@ -253,9 +253,6 @@
             "There is no method for this type -- APPLY-GENERIC"
             (list op type-tags))))))
 
-(define (add x y)
-  (apply-generic 'add x y))
-
 (define (make-rational n d)
   ((get 'make 'rational) n d))
 
