@@ -56,15 +56,11 @@
     dispatch))
 
 (define operation-table (make-table))
-
 (define get (operation-table 'lookup-proc))
-
 (define put (operation-table 'insert-proc!))
 
 (define type-coercion-table (make-table))
-
 (define put-coercion (type-coercion-table 'insert-proc!))
-
 (define get-coercion (type-coercion-table 'lookup-proc))
 
 (define (square x) (* x x))
