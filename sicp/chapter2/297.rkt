@@ -1,19 +1,41 @@
 #lang racket
 
 #|
-  Упражнение 2.95
+  Упражнение 2.97
 
-  Пусть P₁, P₂ и P₃ – многочлены
+  а. Реализуйте этот алгоритм как процедуру reduce-terms, которая принимает в качестве аргументов два
+  списка термов n и d и возвращает список из nn и dd, которые представляют собой n и d, приведенные к
+  наименьшему знаменателю по вышеописанному алгоритму. Напишите, кроме того, процедуру reduce-poly,
+  подобную add-poly, которая проверяет, чтобы два poly имели одну и ту же переменную. Если это так,
+  reduce-poly откусывает эту переменную и передает оставшуюся часть задачи в reduce-terms, а затем
+  прикрепляет переменную обратно к двум спискам термов, которые получены из reduce-terms.
 
-    P₁: 𝑥² − 2𝑥 + 1
-    P₂: 11𝑥² + 1
-    P₃: 13𝑥 + 5
+  б. Определите процедуру, аналогичную reduce-terms, которая делает то, что делала для целых чисел
+  исходная make-rat:
 
-  Теперь пусть Q₁ будет произведение P₁ и P₂ , а Q₂ произведение P₁ и P₃. При помощи greatest-common-divisor
-  (упражнение 2.94) вычислите НОД Q₁ и Q₂. Обратите внимание, что ответ несовпадает с P₁. Этот пример
-  вводит в вычисление операции с нецелыми числами, и это создает сложности для алгоритма вычисления НОД.
-  Чтобы понять, что здесь происходит, попробуйте включить трассировку в gcd-terms при вычислении НОД
-  либо проведите деление вручную.
+    (define (reduce-integers n d)
+      (let ((g (gcd n d)))
+        (list (/ n g) (/ d g))))
+
+  и определите reduce как обобщенную операцию, которая вызывает apply-generic и диспетчирует либо к
+  reduce-poly (если аргументы — многочлены), либо к reduce-integers (для аргументов типа scheme-number).
+  Теперь Вы легко можете заставить пакет рациональной арифметики приводить дроби к наименьшему знаменателю,
+  потребовав от make-rat звать reduce прежде, чем сочетать данные числитель и знаменатель в процессе
+  порождения рационального числа. Теперь система обрабатывает рациональные выражения и для целых чисел,
+  и для многочленов. Чтобы проверить программу, попробуйте пример, который приведен в начале этого
+  расширенного упражнения:
+
+    (define p1 (make-polynomial 'x '((1 1)(0 1))))
+    (define p2 (make-polynomial 'x '((3 1)(0 -1))))
+    (define p3 (make-polynomial 'x '((1 1))))
+    (define p4 (make-polynomial 'x '((2 1)(0 -1))))
+
+    (define rf1 (make-rational p1 p2))
+    (define rf2 (make-rational p3 p4))
+
+    (add rf1 rf2)
+
+  Посмотрите, удалось ли Вам получить правильный ответ, правильно приведенный к наименьшему знаменателю.
 |#
 
 (#%require rackunit
@@ -169,22 +191,30 @@
 
     (iter (length args)))
 
-  (define (apply-with-type-conversion type-list)
+  (define (apply-with-type-conversion args type-list)
     (if (null? type-list)
-        (send-error)
+       '()
         (let ((target-type (car type-list)))
           (let ((proc (get op (make-proc-signature target-type))))
             (if proc
                 (let ((converted-args (type-conversion args target-type)))
                   (if (null? converted-args)
-                      (apply-with-type-conversion (cdr type-list))
+                      (apply-with-type-conversion args (cdr type-list))
                       (apply proc (map contents converted-args))))
-                (apply-with-type-conversion (cdr type-list)))))))
+                (apply-with-type-conversion args (cdr type-list)))))))
 
   (let ((proc (get op type-tags)))
     (if proc
         (apply proc (map contents args))
-        (apply-with-type-conversion type-tags))))
+        (let ((result-with-conversion (apply-with-type-conversion args type-tags)))
+          (if (null? result-with-conversion)
+              (let ((dropped-args (map drop args)))
+                (let ((result-with-drop (apply-with-type-conversion dropped-args
+                                                                    (map type-tag dropped-args))))
+                  (if (null? result-with-drop)
+                      (send-error)
+                      result-with-drop)))
+              result-with-conversion)))))
 
 (define (drop datum)
   (let ((projected-datum (project datum)))
@@ -208,10 +238,15 @@
           (tag q)
           q)))
 
-  (define (gcd a b)
+  (define (gcd-integers a b)
     (if (= b 0)
         a
-        (gcd b (remainder a b))))
+        (gcd-integers b (remainder a b))))
+
+  (define (reduce-integers n d)
+    (let ((g (gcd n d)))
+      (list (tag (/ n g))
+            (tag (/ d g)))))
 
   (define (integer->rational n)
     ((get 'make 'rational) n 1))
@@ -242,7 +277,10 @@
   (put 'atan '(integer integer)
     (lambda (x y) (atan x y)))
   (put 'gcd '(integer integer)
-    (lambda (x y) (tag (gcd x y))))
+    (lambda (x y) (tag (gcd-integers x y))))
+  (put 'reduce '(integer integer) reduce-integers)
+  (put 'expt '(integer integer)
+    (lambda (x y) (tag (expt x y))))
 
   (put-coercion 'integer 'rational
     (lambda (int) (integer->rational (contents int))))
@@ -287,6 +325,8 @@
     (lambda (x) (sin x)))
   (put 'atan '(real real)
     (lambda (x y) (atan x y)))
+  (put 'expt '(real real)
+    (lambda (x y) (expt x y)))
 
   (put-coercion 'real 'integer
     (lambda (real) (real->integer real)))
@@ -401,10 +441,20 @@
                                    (imag-part z1)))))
 
   (define (div-complex z1 z2)
-    (make-from-mag-ang (div (magnitude z1)
-                            (magnitude z2))
-                       (sub (angle z1)
-                            (angle z2))))
+    (let ((denom (add (mul (real-part z2)
+                           (real-part z2))
+                      (mul (imag-part z2)
+                           (imag-part z2)))))
+      (make-from-real-imag (div (add (mul (real-part z1)
+                                          (real-part z2))
+                                     (mul (imag-part z1)
+                                          (imag-part z2)))
+                                denom)
+                           (div (sub (mul (imag-part z1)
+                                          (real-part z2))
+                                     (mul (real-part z1)
+                                          (imag-part z2)))
+                                denom))))
 
   (define (complex->real complex)
     ((get 'make 'real) (real-part complex)))
@@ -652,9 +702,6 @@
                               (car rest-of-result))
                         (cadr rest-of-result))))))))
 
-  (define (remainder-terms TL1 TL2)
-    (cadr (div-terms TL1 TL2)))
-
   (define (gcd-poly p1 p2)
     (if (same-variable? (variable p1) (variable p2))
         (make-poly (variable p1)
@@ -663,13 +710,84 @@
         (error "Polynomials of different variables -- GCD-POLY"
                (list p1 p2))))
 
-  (define (gcd-terms a b)
-    (if (empty-termlist? b)
-        a
-        (gcd-terms b (remainder-terms a b))))
+  (define (pseudoremainder-terms P Q)
+    (define (integerizing-factor numer-TL denom-TL)
+      (cond ((null? numer-TL) 1)
+            (else
+              (let ((n-first-term (first-term numer-TL))
+                    (d-first-term (first-term denom-TL)))
+                (let ((leading-coeff-d (coeff d-first-term))
+                      (order-n (order n-first-term))
+                      (order-d (order d-first-term)))
+                  (exponent leading-coeff-d (+ 1 (- order-n order-d))))))))
 
-  (define (polynomial->rational poly)
-    ((get 'make 'rational) poly 1))
+    (cadr (div-terms (mul-term-by-all-terms (make-term 0 (integerizing-factor P Q))
+                                            P)
+                     Q)))
+
+  (define (coeff-gcd TL)
+    (define (rec L)
+      (if (null? L)
+          0
+          (greatest-common-divisor (coeff (first-term L)) (rec (rest-terms L)))))
+
+    (with-handlers ((exn:fail? (lambda (_) 1)))
+      (rec TL)))
+
+  (define (gcd-terms TL1 TL2)
+    (define (gcd-rec L1 L2)
+      (if (empty-termlist? L2)
+          L1
+          (gcd-rec L2 (pseudoremainder-terms L1 L2))))
+
+    (let ((gcd-term-list (gcd-rec TL1 TL2)))
+      (car (div-terms gcd-term-list
+                      (list (make-term 0 (coeff-gcd gcd-term-list)))))))
+
+  (define (reduce-poly numer-P denom-P)
+    (if (same-variable? (variable numer-P) (variable denom-P))
+        (let ((var (variable numer-P))
+              (reduced-TL (reduce-terms (term-list numer-P)
+                                        (term-list denom-P))))
+          (list (make-polynomial var (car reduced-TL))
+                (make-polynomial var (cadr reduced-TL))))
+        (error "Polynomials of different variables -- REDUCE-POLY"
+               (list numer-P denom-P))))
+
+  (define (reduce-terms numer-TL denom-TL)
+    (define (integerizing-factor gcd n-TL d-TL)
+      (if (null? n-TL)
+          1
+          (let ((gcd-leading-term (first-term gcd))
+                (n-leading-term (first-term n-TL))
+                (d-leading-term (first-term d-TL)))
+            (exponent (coeff gcd-leading-term)
+                      (+ 1 (- (max (order n-leading-term)
+                                   (order d-leading-term))
+                              (order gcd-leading-term)))))))
+
+    (define (integer-gcd L1 L2)
+      (abs
+        (contents
+          (with-handlers ((exn:fail? (lambda (_) 1)))
+            (greatest-common-divisor (coeff-gcd L1)
+                                    (coeff-gcd L2))))))
+
+    (if (not (zero-termlist? denom-TL))
+        (let ((great-common-div (gcd-terms numer-TL denom-TL)))
+          (let ((integerizing-term (make-term 0
+                                              (integerizing-factor great-common-div
+                                                                   numer-TL
+                                                                   denom-TL))))
+            (let ((normilize-numer (car (div-terms (mul-term-by-all-terms integerizing-term numer-TL)
+                                                   great-common-div)))
+                  (normilize-denom (car (div-terms (mul-term-by-all-terms integerizing-term denom-TL)
+                                                   great-common-div))))
+              (let ((gcd-int (list (make-term 0 (integer-gcd normilize-numer normilize-denom)))))
+                (list (car (div-terms normilize-numer gcd-int))
+                      (car (div-terms normilize-denom gcd-int)))))))
+        (error "Division by zero -- REDUCE-TERMS"
+               (list numer-TL denom-TL))))
 
   (define (free-coeff p)
     (define (last-coeff TL)
@@ -693,6 +811,9 @@
               ((eq? free-coeff-type 'polynomial) (polynomial->complex free-c))
               (else (shift-to free-c 'complex))))))
 
+  (define (polynomial->rational poly)
+    ((get 'make 'rational) poly 1))
+
   (put 'make 'polynomial
     (lambda (var terms) (tag (make-poly var terms))))
   (put 'equ? '(polynomial polynomial) equ-poly?)
@@ -710,6 +831,7 @@
     (lambda (p1 p2) (div-poly p1 p2)))
   (put 'gcd '(polynomial polynomial)
     (lambda (p1 p2) (tag (gcd-poly p1 p2))))
+  (put 'reduce '(polynomial polynomial) reduce-poly)
 
   (put-coercion 'polynomial 'complex polynomial->complex)
   (put-coercion 'polynomial 'rational polynomial->rational)
@@ -724,7 +846,8 @@
 
   (define (make-rat n d)
     (if (not (=zero? d))
-        (tag (cons n d))
+        (let ((reduced-nd (reduce n d)))
+          (tag (cons (car reduced-nd) (cadr reduced-nd))))
         (error "Incorrect argument -- MAKE-RAT" n d)))
 
   (define (equ-rat? x y)
@@ -772,6 +895,7 @@
   (put 'sub '(rational rational) sub-rat)
   (put 'mul '(rational rational) mul-rat)
   (put 'div '(rational rational) div-rat)
+
   (put-coercion 'rational 'polynomial rational->polynomial)
   'done)
 
@@ -791,18 +915,6 @@
 
 (define (make-rational n d)
   ((get 'make 'rational) n d))
-
-(define (real-part z)
-  (apply-generic 'real-part z))
-
-(define (imag-part z)
-  (apply-generic 'imag-part z))
-
-(define (magnitude z)
-  (apply-generic 'magnitude z))
-
-(define (angle z)
-  (apply-generic 'angle z))
 
 (define (=zero? datum)
   (apply-generic 'zero? datum))
@@ -843,6 +955,12 @@
 (define (greatest-common-divisor datum1 datum2)
   (apply-generic 'gcd datum1 datum2))
 
+(define (reduce datum1 datum2)
+  (apply-generic 'reduce datum1 datum2))
+
+(define (exponent datum1 datum2)
+  (apply-generic 'expt datum1 datum2))
+
 (install-integer-package)
 (install-real-package)
 (install-rectangular-package)
@@ -853,213 +971,202 @@
 
 ; Тесты
 
-(define int (make-integer 10))
-(define real (make-real 10))
-(define complex (make-complex-from-real-imag 10 0))
-(define poly (make-polynomial 'x '((0 10))))
-(define rat (make-rational poly 1))
+(define int10 (make-integer 10))
+(define intE+ (make-integer 0))
+(define intE* (make-integer 1))
+(define real10 (make-real 10))
+(define realE+ (make-real 0))
+(define realE* (make-real 1))
+(define complex10 (make-complex-from-real-imag 10 0))
+(define complexE+ (make-complex-from-real-imag 0 0))
+(define complexE* (make-complex-from-real-imag 1 0))
+(define poly10 (make-polynomial 'x (list (list 0 complex10))))
+(define polyE+ (make-polynomial 'x (list (list 0 complexE+))))
+(define polyE* (make-polynomial 'x (list (list 0 complexE*))))
+(define rat10 (make-rational poly10 1))
+(define ratE+ (make-rational polyE+ 1))
+(define ratE* (make-rational polyE* 1))
 
-(check-true (equ? (raise int) real))
-(check-true (equ? (raise real) complex))
-(check-true (equ? (raise complex) poly))
-(check-true (equ? (raise poly) rat))
-(check-false (raise rat))
+(check-equal? (raise int10) real10)
+(check-equal? (raise intE+) realE+)
+(check-equal? (raise intE*) realE*)
+(check-equal? (raise real10) complex10)
+(check-equal? (raise realE+) complexE+)
+(check-equal? (raise realE*) complexE*)
+(check-equal? (raise complex10) poly10)
+(check-equal? (raise complexE+) polyE+)
+(check-equal? (raise complexE*) polyE*)
+(check-equal? (raise poly10) rat10)
+(check-equal? (raise polyE+) ratE+)
+(check-equal? (raise polyE*) ratE*)
+(check-false (raise rat10))
 
-(check-false (project int))
-(check-true (equ? (project real) int))
-(check-true (equ? (project complex) real))
-(check-true (equ? (project poly) complex))
-(check-true (equ? (project rat) poly))
+(check-false (project int10))
+(check-equal? (project real10) int10)
+(check-equal? (project realE+) intE+)
+(check-equal? (project realE*) intE*)
+(check-equal? (project complex10) real10)
+(check-equal? (project complexE+) realE+)
+(check-equal? (project complexE*) realE*)
+(check-equal? (project poly10) complex10)
+(check-equal? (project polyE+) complexE+)
+(check-equal? (project polyE*) complexE*)
+(check-equal? (project rat10) (make-polynomial 'x '((0 10))))
+(check-equal? (project ratE+) (make-polynomial 'x '()))
+(check-equal? (project ratE*) (make-polynomial 'x '((0 1))))
 
-(check-true (equ? (drop int) int))
-(check-true (equ? (drop real) int))
-(check-true (equ? (drop complex) int))
-(check-true (equ? (drop poly) int))
-(check-true (equ? (drop rat) int))
+(check-equal? (drop int10) int10)
+(check-equal? (drop real10) int10)
+(check-equal? (drop complex10) int10)
+(check-equal? (drop poly10) int10)
+(check-equal? (drop rat10) int10)
 
-(check-true (equ? int int))
-(check-true (equ? int real))
-(check-true (equ? int complex))
-(check-true (equ? int poly))
-(check-true (equ? int rat))
-
-(check-true (equ? real real))
-(check-true (equ? real int))
-(check-true (equ? real complex))
-(check-true (equ? real poly))
-(check-true (equ? real rat))
-
-(check-true (equ? complex complex))
-(check-true (equ? complex int))
-(check-true (equ? complex real))
-(check-true (equ? complex poly))
-(check-true (equ? complex rat))
-
-(check-true (equ? rat rat))
-(check-true (equ? rat int))
-(check-true (equ? rat real))
-(check-true (equ? rat complex))
-(check-true (equ? rat poly))
+(check-true (equ? int10 int10))
+(check-true (equ? int10 real10))
+(check-true (equ? int10 complex10))
+(check-true (equ? int10 poly10))
+(check-true (equ? int10 rat10))
+(check-true (equ? real10 real10))
+(check-true (equ? real10 int10))
+(check-true (equ? real10 complex10))
+(check-true (equ? real10 poly10))
+(check-true (equ? real10 rat10))
+(check-true (equ? complex10 complex10))
+(check-true (equ? complex10 int10))
+(check-true (equ? complex10 real10))
+(check-true (equ? complex10 poly10))
+(check-true (equ? complex10 rat10))
+(check-true (equ? rat10 rat10))
+(check-true (equ? rat10 int10))
+(check-true (equ? rat10 real10))
+(check-true (equ? rat10 complex10))
+(check-true (equ? rat10 poly10))
 
 (define int1 (make-integer 1))
 (define int2 (make-integer 2))
-(define int1+int2 (make-integer 3))
+(define int3 (make-integer 3))
 
-(check-true (equ? (add int1 int2) int1+int2))
+(check-true (equ? (add int1 int2) int3))
+(check-true (equ? (add int2 int1) int3))
+(check-true (equ? (add intE+ intE+) intE+))
 
-(define rat1 (make-rational 1 1))
-(define rat2 (make-rational 5 2))
-(define rat1+rat2 (make-rational 7 2))
+(define real1.0 (make-real 1.0))
+(define real2.5 (make-real 2.5))
+(define real3.5 (make-real 3.5))
 
-(check-true (equ? (add rat1 rat2) rat1+rat2))
-(check-true (equ? (add int1 rat2) rat1+rat2))
-(check-true (equ? (add rat2 rat1) rat1+rat2))
+(check-true (equ? (add real1.0 real2.5) real3.5))
+(check-true (equ? (add real2.5 real1.0) real3.5))
+(check-true (equ? (add realE+ realE+) realE+))
+(check-true (equ? (add int1 real2.5) real3.5))
+(check-true (equ? (add int2 real1.0) int3))
 
-(define int2+rat2 (make-rational 9 2))
+(define complex1.0 (make-complex-from-real-imag 1.0 0))
+(define complex2.5+i (make-complex-from-real-imag 2.5 1))
+(define complex3.5+i (make-complex-from-real-imag 3.5 1))
 
-(check-true (equ? (add int2 rat2) int2+rat2))
-(check-true (equ? (add rat2 int2) int2+rat2))
+(check-true (equ? (add complex1.0 complex2.5+i) complex3.5+i))
+(check-true (equ? (add int1 complex2.5+i) complex3.5+i))
+(check-true (equ? (add real1.0 complex1.0) int2))
 
-(define real1 (make-real 1.0))
-(define real2 (make-real 2.5))
-(define real1+real2 (make-real 3.5))
+(define poly1 (make-polynomial 'x '((0 1))))
+(define poly2 (make-polynomial 'x '((0 2))))
 
-(check-true (equ? (add real1 real2) real1+real2))
+(check-true (equ? (add poly1 poly2) int3))
+(check-true (equ? (add real2.5 poly1) real3.5))
 
-(define int1+real2 (make-real 3.5))
+(define rat1/1 (make-rational 1 1))
+(define rat5/2 (make-rational 5 2))
+(define rat7/2 (make-rational 7 2))
 
-(check-true (equ? (add int1 real2) int1+real2))
-(check-true (equ? (add real2 int1) int1+real2))
-(check-true (equ? (add rat1 real2) int1+real2))
-(check-true (equ? (add real2 rat1) int1+real2))
+(check-true (equ? (add rat1/1 rat5/2) rat7/2))
+(check-true (equ? (add real1.0 rat5/2) rat7/2))
+(check-true (equ? (add rat1/1 int2) int3))
 
-(define complex1 (make-complex-from-real-imag 1.0 0))
-(define complex2 (make-complex-from-real-imag 2.5 1))
-(define complex1+complex2 (make-complex-from-real-imag 3.5 1))
+(check-equal? (drop real3.5) real3.5)
+(check-equal? (drop complex2.5+i) complex2.5+i)
 
-(check-true (equ? (add complex1 complex2) complex1+complex2))
+(check-true (equ? (mul int1 intE*) int1))
+(check-true (equ? (mul int2 rat5/2) 5))
+(check-true (equ? (mul poly1 real2.5) real2.5))
 
-(check-true (equ? (add int1 complex2) complex1+complex2))
-(check-true (equ? (add complex2 int1) complex1+complex2))
-
-(check-true (equ? (add rat1 complex2) complex1+complex2))
-(check-true (equ? (add complex2 rat1) complex1+complex2))
-(check-true (equ? (add real1 complex2) complex1+complex2))
-(check-true (equ? (add complex2 real1) complex1+complex2))
-
-(define rat3 (make-rational 7 15))
-(define complex3 (make-complex-from-real-imag 1.5 7))
-
-(check-true (equ? (drop rat3) rat3))
-(check-true (equ? (drop complex3) complex3))
-
-(define rat4 (make-rational 7 2))
-(define real4 (make-real 3.5))
-(define complex4 (make-complex-from-real-imag 3.5 0))
-
-(check-true (equ? (drop rat4) rat4))
-(check-true (equ? (drop real4) real4))
-(check-true (equ? (drop complex4) real4))
-
-(define real5 (make-real (/ 1 333)))
-(define complex5 (make-complex-from-real-imag (/ 1 333) 0))
-
-(check-true (equ? (drop real5) real5))
-(check-true (equ? (drop complex5) real5))
-
-(check-true (equ? (mul int1 int2) '(integer . 2)))
-; Должно быть true, но false из-за того, что не реализовано сокращение дробей для rational
-(check-false (equ? (mul int2 rat2) '(integer . 5)))
-
-(check-true (=zero? (make-integer 0)))
-(check-true (=zero? (make-rational 0 5)))
-(check-true (=zero? (make-real 0)))
-(check-true (=zero? (make-complex-from-real-imag 0 0)))
-(check-false (=zero? (make-integer 1)))
-(check-false (=zero? (make-real 1)))
-(check-false (=zero? (make-rational 1 1)))
-(check-false (=zero? (make-complex-from-real-imag 0 1)))
+(check-true (=zero? intE+))
+(check-true (=zero? realE+))
+(check-true (=zero? complexE+))
+(check-true (=zero? polyE+))
+(check-true (=zero? ratE+))
+(check-false (=zero? intE*))
+(check-false (=zero? realE*))
+(check-false (=zero? complexE*))
+(check-false (=zero? polyE*))
+(check-false (=zero? ratE*))
 
 (check-true (=zero? (make-polynomial 'x '())))
-(check-true (=zero? (make-polynomial 'x '((1 0)))))
 (check-true (=zero? (make-polynomial 'x '((100 0) (10 0) (1 0)))))
-(check-true (=zero? (make-polynomial 'x  (list '(1 0)
-                                                (list 2 (make-integer 0))
-                                                (list 3 (make-real 0))
-                                                (list 4 (make-rational 0 1))
-                                                (list 5 (make-complex-from-real-imag 0 0))))))
-(check-false (=zero? (make-integer 1)))
-(check-false (=zero? (make-real 1)))
-(check-false (=zero? (make-rational 1 1)))
-(check-false (=zero? (make-complex-from-real-imag 0 1)))
-(check-false (=zero? (make-complex-from-real-imag (make-real 0) (make-rational 1 2))))
-(check-false (=zero? (make-polynomial 'x '((0 1)))))
-(check-false (=zero? (make-polynomial 'x  (list (list 2 (make-rational 1 2))))))
-(check-false (=zero? (make-polynomial 'x  (list '(1 0)
-                                                 (list 2 (make-integer 0))
-                                                 (list 3 (make-real 0))
-                                                 (list 4 (make-rational 0 1))
-                                                 (list 5 (make-complex-from-real-imag 0 1))))))
+(check-true (=zero? (make-polynomial 'x  (list '(5 0)
+                                                (list 4 intE+)
+                                                (list 3 realE+)
+                                                (list 2 complexE+)
+                                                (list 1 polyE+)
+                                                (list 0 ratE+)))))
 
-(define p1 (make-polynomial 'x '((100 5) (10 5) (1 0))))
-(define p2 (make-polynomial 'x '((100 0) (10 5) (1 0))))
-(define p3 (make-polynomial 'x '((100 0) (10 0) (1 5))))
+(check-true (equ? (reverse-sign int10) -10))
+(check-true (equ? (reverse-sign rat10) -10))
+(check-true (equ? (reverse-sign real10) -10))
+(check-true (equ? (reverse-sign 0) 0))
+(check-true (equ? (reverse-sign 10) -10))
+(check-true (equ? (reverse-sign -10) 10))
+(check-true (equ? (reverse-sign complex10) (make-complex-from-real-imag -10 0)))
 
-(check-true (equ? (make-polynomial 'x '()) (make-polynomial 'x '())))
-(check-true (equ? (make-polynomial 'x '((10 0) (5 1) (3 0) (2 0)))
-                    (make-polynomial 'x '((100 0) (5 1)))))
-(check-true (equ? (make-polynomial 'x '((2 1) (1 4) (0 16)))
-                    (make-polynomial 'x '((2 1) (1 4) (0 16)))))
-(check-true (equ? (add p1 p2) (make-polynomial 'x '((100 5) (10 10)))))
-(check-true (equ? (add p1 p3) (make-polynomial 'x '((100 5) (10 5) (1 5)))))
+(define poly5-5-5 (make-polynomial 'x '((100 5) (10 5) (1 5))))
+(define poly0-0-5 (make-polynomial 'x '((100 0) (10 0) (1 5))))
+(define poly5-5-0 (make-polynomial 'x '((100 5) (10 5) (1 0))))
 
-(check-true (equ? (reverse-sign int) (make-integer -10)))
-(check-true (equ? (reverse-sign rat) (make-rational -10 1)))
-(check-true (equ? (reverse-sign real) (make-real -10)))
-(check-true (equ? (reverse-sign 0) (make-real 0)))
-(check-true (equ? (reverse-sign 10) (make-real -10)))
-(check-true (equ? (reverse-sign -10) (make-real 10)))
-(check-true (equ? (reverse-sign complex) (make-complex-from-real-imag -10 0)))
-(check-true (equ? (reverse-sign p1) (make-polynomial 'x '((100 -5) (10 -5)))))
-(check-true (equ? (reverse-sign p2) (make-polynomial 'x '((10 -5)))))
-(check-true (equ? (reverse-sign p3) (make-polynomial 'x '((1 -5)))))
+(check-true (equ? (reverse-sign poly5-5-5) (make-polynomial 'x '((100 -5) (10 -5) (1 -5)))))
+(check-true (equ? (reverse-sign poly0-0-5) (make-polynomial 'x '((1 -5)))))
+(check-true (equ? (reverse-sign poly5-5-0) (make-polynomial 'x '((100 -5) (10 -5)))))
 
-(check-true (equ? (sub p1 p2) (make-polynomial 'x '((100 5)))))
-(check-true (equ? (sub p2 p1) (make-polynomial 'x '((100 -5)))))
-(check-true (equ? (sub p1 p3) (make-polynomial 'x '((100 5) (10 5) (1 -5)))))
-(check-true (equ? (sub p3 p1) (make-polynomial 'x '((100 -5) (10 -5) (1 5)))))
-(check-true (equ? (sub p2 p3) (make-polynomial 'x '((10 5) (1 -5)))))
-(check-true (equ? (sub p3 p2) (make-polynomial 'x '((10 -5) (1 5)))))
-(check-true (equ? (sub p1 p1) (make-polynomial 'x '())))
+(check-true (equ? (add poly5-5-0 poly0-0-5) poly5-5-5))
+(check-true (equ? (sub poly5-5-5 poly5-5-0) poly0-0-5))
+(check-true (equ? (sub poly5-5-5 poly0-0-5) poly5-5-0))
+(check-true (equ? (sub poly5-5-5 poly5-5-5) polyE+))
 
-(define poly1 (make-polynomial 'x '((5 1) (0 -1))))
-(define poly2 (make-polynomial 'x '((2 1) (0 -1))))
-(define poly-div-q (make-polynomial 'x '((3 1) (1 1))))
-(define poly-div-r (make-polynomial 'x '((1 1) (0 -1))))
+(define P1 (make-polynomial 'x '((5 1) (0 -1))))
+(define P2 (make-polynomial 'x '((2 1) (0 -1))))
+(define P1/P2-quotient (make-polynomial 'x '((3 1) (1 1))))
+(define P1/P2-remainder (make-polynomial 'x '((1 1) (0 -1))))
 
-(check-equal? (div poly1 poly2) (list poly-div-q poly-div-r))
-(check-true (equ? (sub poly1 (mul poly2 poly-div-q)) poly-div-r))
-(check-true (equ? (add poly-div-r (mul poly2 poly-div-q)) poly1))
+(check-equal? (div P1 P2) (list P1/P2-quotient P1/P2-remainder))
+(check-true (equ? (sub P1 (mul P2 P1/P2-quotient)) P1/P2-remainder))
+(check-true (equ? (add P1/P2-remainder (mul P2 P1/P2-quotient)) P1))
 
-#|
-    P₁: 𝑥² − 2𝑥 + 1
-    P₂: 11𝑥² + 1
-    P₃: 13𝑥 + 5
-    Q₁: 11𝑥⁴ - 22𝑥³ + 12𝑥² - 2𝑥 + 1 = (𝑥² − 2𝑥 + 1)(11𝑥² + 1)
-    Q₂: 13𝑥³ - 21𝑥² + 3𝑥 + 5 = (𝑥² − 2𝑥 + 1)(13𝑥 + 5)
-|#
+(define P3 (make-polynomial 'x '((4 1) (3 -1) (2 -2) (1 2))))
+(define P4 (make-polynomial 'x '((3 1) (1 -1))))
 
-(define P1 (make-polynomial 'x '((2 1) (1 -2) (0 1))))
-(define P2 (make-polynomial 'x '((2 11) (0 1))))
-(define P3 (make-polynomial 'x '((1 13) (0 5))))
+(define gcd-P3-P4 (make-polynomial 'x '((2 -1) (1 1))))
+(define P3/gcd (make-polynomial 'x '((2 -1) (0 2))))
+(define P4/gcd (make-polynomial 'x '((1 -1) (0 -1))))
 
-(define Q1 (mul P1 P2))
-(define Q2 (mul P1 P3))
+(check-true (equ? (greatest-common-divisor P3 P4) gcd-P3-P4))
+(check-true (equ? (car (div P3 gcd-P3-P4)) P3/gcd))
+(check-true (equ? (car (div P4 gcd-P3-P4)) P4/gcd))
 
-#|
-    (greatest-common-divisor Q1 Q2) => '(polynomial x (2 444/169) (1 -888/169) (0 444/169))
+(define P5 (make-polynomial 'x '((2 1) (1 -2) (0 1))))
+(define P6 (make-polynomial 'x '((2 11) (0 1))))
+(define P7 (make-polynomial 'x '((1 13) (0 5))))
 
-  Результат отличается от P1 на множитель 444/169.
-|#
+(define Q1 (mul P5 P6))
+(define Q2 (mul P5 P7))
 
-(check-false (equ? (greatest-common-divisor Q1 Q2) P1))
+(check-true (equ? (greatest-common-divisor Q1 Q2) P5))
+
+(define P8 (make-polynomial 'x '((1 1)(0 1))))
+(define P9 (make-polynomial 'x '((3 1)(0 -1))))
+(define P10 (make-polynomial 'x '((1 1))))
+(define P11 (make-polynomial 'x '((2 1)(0 -1))))
+
+(define rf1 (make-rational P8 P9))
+(define rf2 (make-rational P10 P11))
+(define rf1+rf2 (make-rational (make-polynomial 'x '((3 1)(2 2)(1 3)(0 1)))
+                               (make-polynomial 'x '((4 1)(3 1)(1 -1)(0 -1)))))
+
+(check-true (equ? (add rf1 rf2) rf1+rf2))

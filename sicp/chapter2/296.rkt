@@ -405,10 +405,10 @@
                                    (imag-part z1)))))
 
   (define (div-complex z1 z2)
-    (make-from-real-imag (div (magnitude z1)
-                              (magnitude z2))
-                         (sub (angle z1)
-                              (angle z2))))
+    (make-from-mag-ang (div (magnitude z1)
+                            (magnitude z2))
+                       (sub (angle z1)
+                            (angle z2))))
 
   (define (complex->real complex)
     ((get 'make 'real) (real-part complex)))
