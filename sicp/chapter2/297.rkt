@@ -884,8 +884,11 @@
     (let ((rat (contents tagged-rat)))
       (let ((div-res (div (numer rat) (denom rat)))
             (numer-type (type-tag (numer rat))))
-        (cond ((eq? numer-type 'polynomial) (car div-res))
-              (else (shift-to div-res 'polynomial))))))
+        (if (eq? numer-type 'polynomial)
+            (car div-res)
+            (with-handlers
+              ((exn:fail? (lambda (_) (shift-to (car div-res) 'polynomial))))
+              (shift-to div-res 'polynomial))))))
 
   (put 'make 'rational make-rat)
   (put 'equ? '(rational rational) equ-rat?)
