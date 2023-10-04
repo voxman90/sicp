@@ -1,11 +1,17 @@
 #lang racket
 
 #|
-  Упражнение 3.29
+  Упражнение 3.30
 
-  Еще один способ создать ИЛИ-элемент — это собрать его как составной блок из И-элементов и инверторов.
-  Определите процедуру or-gate, которая это осуществляет. Как время задержки ИЛИ-элемента выражается
-  через and-gate-delay и inverter-delay?
+  На рисунке 3.27 изображен каскадный сумматор (ripple-carry adder), полученный выстраиванием в ряд n
+  сумматоров. Это простейшая форма параллельного сумматора для сложения двух n-битных двоичных чисел.
+  На входе мы имеем A₁, A₂, A₃, ..., Aₙ и B₁, B₂, B₃, ..., Bₙ — два двоичных числа, подлежащих сложению
+  (каждый из Aₖ и Bₖ имеет значение либо 0, либо 1). Схема порождает S₁, S₂, S₃, ..., Sₙ — первые n бит
+  суммы, и C – бит переноса после суммы. Напишите процедуру ripple-carry-adder, которая бы моделировал
+  эту схему. Процедура должна в качестве аргументов принимать три списка по n проводов в каждом (Aₖ, Bₖ
+  и Sₖ), а также дополнительный провод C. Главный недостаток каскадных сумматоров в том, что приходится
+  ждать, пока сигнал распространится. Какова задержка, требуемая для получения полного вывода n-битного
+  каскадного сумматора, выраженная в зависимости от задержек И-, ИЛИ-элементов и инверторов?
 |#
 
 (#%require rackunit)
@@ -111,8 +117,6 @@
 
 (define the-agenda (make-agenda))
 
-(define or-gate-delay 5)
-
 (define (remove-first-agenda-item! agenda)
   (let ((q (segment-queue (first-segment agenda))))
     (delete-queue! q)
@@ -169,14 +173,8 @@
 
 ; Решение упражнения
 
-#|
-  Как время задержки ИЛИ-элемента выражается через and-gate-delay и inverter-delay?
-
-  Как and-gate-delay + 2 * inverter-delay, если считать, что время задержки может протекать параллельно.
-  И and-gate-delay + 3 * inverter-delay, если считать задержку исключительно последовательно.
-|#
-
 (define inverter-delay 5)
+(define or-gate-delay 5)
 (define and-gate-delay 5)
 
 (define (logical-not s)
@@ -188,6 +186,11 @@
   (cond ((and (= s1 1) (= s2 1)) 1)
         ((or (= s1 0) (= s2 0)) 0)
         (else (error "Wrong signal -- LOGICAL-AND" s1 s2))))
+
+(define (logical-or s1 s2)
+  (cond ((or (= s1 1) (= s2 1)) 1)
+        ((and (= s1 0) (= s2 0)) 0)
+        (else (error "Wrong signal -- LOGICAL-OR" s1 s2))))
 
 (define (inverter input output)
   (define (invert-input)
@@ -211,45 +214,100 @@
   (add-action! w2 and-action-procedure)
   'ok)
 
-(define (or-gate s1 s2 output)
-  (let ((inverted-s1 (make-wire))
-        (inverted-s2 (make-wire))
-        (and-gate-output (make-wire)))
-    (inverter s1 inverted-s1)
-    (inverter s2 inverted-s2)
-    (and-gate inverted-s1 inverted-s2 and-gate-output)
-    (inverter and-gate-output output))
+(define (or-gate w1 w2 output)
+  (define (or-action-procedure)
+    (let ((new-value (logical-or (get-signal w1)
+                                 (get-signal w2))))
+      (after-delay or-gate-delay
+                   (lambda ()
+                     (set-signal! output new-value)))))
+
+  (add-action! w1 or-action-procedure)
+  (add-action! w2 or-action-procedure)
   'ok)
 
-(define a1 (make-wire))
-(define b1 (make-wire))
-(define c1 (make-wire))
+(define (half-adder a b s c)
+  (let ((d (make-wire))
+        (e (make-wire)))
+    (or-gate a b d)
+    (and-gate a b c)
+    (inverter c e)
+    (and-gate d e s))
+  'ok)
 
-(check-equal? (get-signal a1) 0)
-(check-equal? (get-signal b1) 0)
-(check-equal? (get-signal c1) 0)
-(or-gate a1 b1 c1)
-(check-equal? (get-signal a1) 0)
-(check-equal? (get-signal b1) 0)
-(check-equal? (get-signal c1) 0)
-(set-signal! a1 1)
-(check-equal? (get-signal a1) 1)
-(check-equal? (get-signal b1) 0)
-(check-equal? (get-signal c1) 0)
+(define (full-adder a b c-in sum c-out)
+  (let ((s (make-wire))
+        (c1 (make-wire))
+        (c2 (make-wire)))
+    (half-adder b c-in s c1)
+    (half-adder a s sum c2)
+    (or-gate c1 c2 c-out))
+  'ok)
+
+(define (ripple-carry-adder A B S c)
+  (define (iter A B S C)
+    (cond ((null? (cdr A))
+           (full-adder (car A) (car B) C (car S) c))
+          (else
+           (let ((c-out (make-wire)))
+             (full-adder (car A) (car B) C (car S) c-out)
+             (iter (cdr A) (cdr B) (cdr S) c-out)))))
+
+  (let ((length-A (length A))
+        (length-B (length B))
+        (length-S (length S)))
+    (if (or (= length-A 0)
+            (not (and (= length-A length-B) (= length-B length-S))))
+        (error "Wrong input ot output -- RIPPLE-CARRY-ADDER" A B S c)
+        (let ((c-in (make-wire)))
+          (iter A B S c-in)))))
+
+(define A1 (make-wire))
+(define A2 (make-wire))
+(define A3 (make-wire))
+(define B1 (make-wire))
+(define B2 (make-wire))
+(define B3 (make-wire))
+(define S1 (make-wire))
+(define S2 (make-wire))
+(define S3 (make-wire))
+(define C (make-wire))
+
+(ripple-carry-adder (list A1 A2 A3) (list B1 B2 B3) (list S1 S2 S3) C)
 (propagate)
-(check-equal? (get-signal c1) 1)
-(set-signal! b1 1)
+
+(check-equal? (get-signal C) 0)
+(check-equal? (get-signal S1) 0)
+(check-equal? (get-signal S2) 0)
+(check-equal? (get-signal S3) 0)
+
+(set-signal! A1 1)
+(set-signal! A2 1)
+(set-signal! A3 1)
 (propagate)
-(check-equal? (get-signal a1) 1)
-(check-equal? (get-signal b1) 1)
-(check-equal? (get-signal c1) 1)
-(set-signal! a1 0)
+
+(check-equal? (get-signal C) 0)
+(check-equal? (get-signal S1) 1)
+(check-equal? (get-signal S2) 1)
+(check-equal? (get-signal S3) 1)
+
+(set-signal! B1 1)
 (propagate)
-(check-equal? (get-signal a1) 0)
-(check-equal? (get-signal b1) 1)
-(check-equal? (get-signal c1) 1)
-(set-signal! b1 0)
+
+(check-equal? (get-signal C) 1)
+(check-equal? (get-signal S1) 0)
+(check-equal? (get-signal S2) 0)
+(check-equal? (get-signal S3) 0)
+
+(set-signal! A1 1)
+(set-signal! A2 1)
+(set-signal! A3 0)
+(set-signal! B1 0)
+(set-signal! B2 1)
+(set-signal! B3 0)
 (propagate)
-(check-equal? (get-signal a1) 0)
-(check-equal? (get-signal b1) 0)
-(check-equal? (get-signal c1) 0)
+
+(check-equal? (get-signal C) 0)
+(check-equal? (get-signal S1) 1)
+(check-equal? (get-signal S2) 0)
+(check-equal? (get-signal S3) 1)
