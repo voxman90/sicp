@@ -1,21 +1,23 @@
 #lang racket
 
 #|
-  Упражнение 3.34
+  Упражнение 3.35
 
-  Хьюго Дум хочет построить квадратор, блок-ограничение с двумя выводами, такое, что значение соединителя
-  b на втором выводе всегда будет равно квадрату значения соединителя a на первом выводе. Он предлагает
-  следующее простое устройство на основе умножителя:
+  Бен Битобор объясняет Хьюго, что один из способов избежать неприятностей в упражнении 3.34 — определить
+  квадратор как новое элементарное ограничение. Заполните недостающие части в Беновой схеме процедуры,
+  реализующей такое ограничение:
 
-  (define (squarer a b)
-    (multiplier a a b))
-
-  В такой идее есть существенная ошибка. Объясните ее.
-|#
-
-#|
-  Ошибка Хьюго в том, что его прострая процедура будет работать только в одну сторону, если задано a,
-  то будет вычеслен квадрат a, но не наоборот.
+    (define (squarer a b)
+      (define (process-new-value)
+        (if (has-value? b)
+            (if (< (get-value b) 0)
+                (error "square less than 0 -- SQUARER" (get-value b))
+                <alternative1>)
+            <alternative2>))
+      (define (process-forget-value) <body1>)
+      (define (me request) <body2>)
+      <rest of definition>
+      me)
 |#
 
 (#%require rackunit)
@@ -171,8 +173,35 @@
   (set-value! connector value me)
   me)
 
-(define (squarer a b)
-  (multiplier a a b))
+(define (squarer x square-x)
+  (define (process-new-value)
+    (if (has-value? square-x)
+        (if (< (get-value square-x) 0)
+            (error "square less than 0 -- SQUARER" (get-value square-x))
+            (set-value! x
+                        (sqrt (get-value square-x))
+                        me))
+        (when (has-value? x)
+              (set-value! square-x
+                          (* (get-value x) (get-value x))
+                          me))))
+
+  (define (process-forget-value)
+    (forget-value! square-x me)
+    (forget-value! x me)
+    (process-new-value))
+
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else
+           (error "Unknown request -- SQAURER" request))))
+
+  (connect x me)
+  (connect square-x me)
+  me)
 
 (define a (make-connector))
 (define square-a (make-connector))
@@ -190,10 +219,18 @@
 (check-equal? (get-value a) 3)
 (check-equal? (get-value square-a) 9)
 
+(forget-value! a 'test)
+(set-value! square-a 81 'test)
+
+(check-equal? (get-value a) 9)
+(check-equal? (get-value square-a) 81)
+
 (define b (make-connector))
 (define square-b (make-connector))
 
-(set-value! square-b 1 'test)
+(squarer b square-b)
 
-(check-equal? (get-value square-b) 1)
-(check-false (get-value b)) ; !
+(set-value! square-b 100 'test)
+
+(check-equal? (get-value square-b) 100)
+(check-equal? (get-value b) 10)
