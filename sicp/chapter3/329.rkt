@@ -1,10 +1,11 @@
 #lang racket
 
 #|
-  Упражнение 3.28
+  Упражнение 3.29
 
-  Определите ИЛИ-элемент как элементарный функциональный блок. Ваш конструктор or-gate должен быть
-  подобен and-gate.
+  Еще один способ создать ИЛИ-элемент — это собрать его как составной блок из И-элементов и инверторов.
+  Определите процедуру or-gate, которая это осуществляет. Как время задержки ИЛИ-элемента выражается
+  через and-gate-delay и inverter-delay?
 |#
 
 (#%require rackunit)
@@ -168,21 +169,49 @@
 
 ; Решение упражнения
 
-(define (logical-or s1 s2)
-  (cond ((or (= s1 1) (= s2 1)) 1)
-        ((and (= s1 0) (= s2 0)) 0)
-        (else (error "Wrong signal -- LOGICAL-OR" s1 s2))))
+(define inverter-delay 5)
+(define and-gate-delay 5)
 
-(define (or-gate s1 s2 output)
-  (define (or-action-procedure)
-    (let ((new-value (logical-or (get-signal s1)
-                                 (get-signal s2))))
-      (after-delay or-gate-delay
+(define (logical-not s)
+  (cond ((= s 0) 1)
+        ((= s 1) 0)
+        (else (error "Wrong signal -- LOGICAL-NOT" s))))
+
+(define (logical-and s1 s2)
+  (cond ((and (= s1 1) (= s2 1)) 1)
+        ((or (= s1 0) (= s2 0)) 0)
+        (else (error "Wrong signal -- LOGICAL-AND" s1 s2))))
+
+(define (inverter input output)
+  (define (invert-input)
+    (let ((new-value (logical-not (get-signal input))))
+      (after-delay inverter-delay
                    (lambda ()
                      (set-signal! output new-value)))))
 
-  (add-action! s1 or-action-procedure)
-  (add-action! s2 or-action-procedure)
+  (add-action! input invert-input)
+  'ok)
+
+(define (and-gate w1 w2 output)
+  (define (and-action-procedure)
+    (let ((new-value (logical-and (get-signal w1)
+                                  (get-signal w2))))
+      (after-delay and-gate-delay
+                   (lambda ()
+                     (set-signal! output new-value)))))
+
+  (add-action! w1 and-action-procedure)
+  (add-action! w2 and-action-procedure)
+  'ok)
+
+(define (or-gate s1 s2 output)
+  (let ((inverted-s1 (make-wire))
+        (inverted-s2 (make-wire))
+        (and-gate-output (make-wire)))
+    (inverter s1 inverted-s1)
+    (inverter s2 inverted-s2)
+    (and-gate inverted-s1 inverted-s2 and-gate-output)
+    (inverter and-gate-output output))
   'ok)
 
 (define a1 (make-wire))
