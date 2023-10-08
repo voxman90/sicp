@@ -34,8 +34,6 @@
 
 (define (stream-null? stream) (stream-empty? stream))
 
-(define (cons-stream first rest) (stream-cons first rest))
-
 (define (stream-car stream) (stream-first stream))
 
 (define (stream-cdr stream) (stream-rest stream))
@@ -43,7 +41,7 @@
 (define (stream-enumerate-interval low high)
   (if (> low high)
       the-empty-stream
-      (cons-stream low
+      (stream-cons low
                    (stream-enumerate-interval (+ low 1) high))))
 
 (define (stream-for-each proc stream)
