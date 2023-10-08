@@ -35,6 +35,15 @@
                (stream-map (lambda (item) (+ (stream-car stream) item))
                            (partial-sums (stream-cdr stream)))))
 
+#|
+  Или так:
+
+  (define (partial-sums stream)
+    (stream-cons (stream-car stream)
+                 (add-streams (stream-cdr stream)
+                              (partial-sums stream))))
+|#
+
 (define (display-line x out)
   (newline out)
   (display x out))
