@@ -67,10 +67,8 @@
 
 (define (mul-series s1 s2)
   (stream-cons (* (stream-car s1) (stream-car s2))
-               (add-streams (mul-series (scale-stream (stream-cdr s2) (stream-car s1))
-                                        (stream-cdr s1))
-                            (mul-series (scale-stream (stream-cdr s1) (stream-car s2))
-                                        (stream-cdr s2)))))
+               (add-streams (scale-stream (stream-cdr s2) (stream-car s1))
+                            (mul-series (stream-cdr s1) s2))))
 
 (define sum1 (add-streams (mul-series cosine-series cosine-series)
                           (mul-series sine-series sine-series)))
@@ -89,6 +87,6 @@
 
 (display-stream exp1 output2 8)
 
-(check-equal? (get-output-string output2) "\n1\n2\n4\n8\n16\n32\n64\n128")
+(check-equal? (get-output-string output2) "\n1\n2\n3\n4\n5\n6\n7\n8")
 
 (close-output-port output2)
