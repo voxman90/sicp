@@ -27,8 +27,8 @@
   разделе 1.2.6, которая возвращает неотрицательное число меньше своего аргумента.
 
     (define (random-in-range low high)
-        (let ((range (- high low)))
-          (+ low (random range))))
+      (let ((range (- high low)))
+        (+ low (random range))))
 |#
 
 (#%require rackunit)
